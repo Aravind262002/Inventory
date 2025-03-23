@@ -2,6 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import axios from "axios";
 import { PrismaService } from "./prisma.service";
 import * as dotenv from "dotenv";
+import { RateLimiterService } from "./rate-limiter.service";
 
 dotenv.config();
 
@@ -10,15 +11,20 @@ export class FetchInventoryService {
   private readonly logger = new Logger(FetchInventoryService.name);
   private readonly apiKey = process.env.API_KEY;
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private rateLimiter: RateLimiterService
+  ) {}
 
   async fetchAndStore(productId: number, date: string) {
     try {
-      const response = await axios.get(
-        `https://leap-api.tickete.co/api/v1/inventory/${productId}?date=${date}`,
-        {
-          headers: { "x-api-key": process.env.API_KEY },
-        }
+      const response = await this.rateLimiter.schedule(() =>
+        axios.get(
+          `https://leap-api.tickete.co/api/v1/inventory/${productId}?date=${date}`,
+          {
+            headers: { "x-api-key": this.apiKey },
+          }
+        )
       );
 
       const slots = response.data;
@@ -89,6 +95,7 @@ export class FetchInventoryService {
           });
         }
       }
+
       this.logger.log(`Synced product ${productId} for date ${date}`);
     } catch (err) {
       this.logger.error(`Failed syncing product ${productId} for ${date}`, err);
