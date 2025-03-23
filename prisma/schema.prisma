@@ -1,0 +1,59 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Product {
+  id             Int        @id
+  name           String
+  timeSlotType   String
+  paxTypes       PaxType[]
+  slots          Slot[]
+}
+
+model PaxType {
+  id            Int      @id @default(autoincrement())
+  productId     Int
+  type          String
+  name          String
+  description   String?
+  priceFinal    Float
+  priceOriginal Float
+  currencyCode  String
+  min           Int?
+  max           Int?
+  product       Product  @relation(fields: [productId], references: [id])
+  slotPaxAvailabilities SlotPaxAvailability[]
+
+  @@unique([productId, type])  
+}
+
+model Slot {
+  id            Int      @id @default(autoincrement())
+  productId     Int
+  startDate     String
+  startTime     String
+  priceFinal    Float
+  priceOriginal Float
+  currencyCode  String
+  remaining     Int
+  product       Product  @relation(fields: [productId], references: [id])
+  slotPaxAvailabilities SlotPaxAvailability[]
+
+  @@unique([productId, startDate, startTime]) 
+}
+
+model SlotPaxAvailability {
+  id        Int    @id @default(autoincrement())
+  slotId    Int
+  paxTypeId Int
+  remaining Int
+  slot      Slot   @relation(fields: [slotId], references: [id])
+  paxType   PaxType @relation(fields: [paxTypeId], references: [id])
+
+  @@unique([slotId, paxTypeId]) 
+}
